@@ -23,8 +23,8 @@ print(paste("Number of neighbours:", K))
 
 W <- sparseMatrix(
   i = rep(1:n, each = K),
-  j = as.vector(neighbours),
-  x = as.vector(weights),
+  j = as.vector(t(neighbours)),
+  x = as.vector(t(weights)),
   dims = c(n, n)
 )
 
@@ -50,33 +50,38 @@ print(dim(M))
 
 
 # --------------------------------------------
-# 5. Find smallest eigenvalues/eigenvectors
+# 5. Find eigenvalues near zero
 # --------------------------------------------
 
 eigen_result <- eigs(
   M,
   k = 3,
-  which = "SM"
+  sigma = 0,
+  which = "LM"
 )
 
-# Sort eigenvalues from smallest to largest
+# Sort eigenvalues
 order_index <- order(eigen_result$values)
 
 sorted_values <- eigen_result$values[order_index]
 
 sorted_vectors <- eigen_result$vectors[, order_index]
 
+
+# --------------------------------------------
+# 6. Display eigenvalues
+# --------------------------------------------
+
 print("Sorted eigenvalues:")
 print(sorted_values)
 
 
 # --------------------------------------------
-# 6. Create 2D embedding
+# 7. Create 2D embedding
 # --------------------------------------------
 
-# The first eigenvector corresponds to the
-# trivial solution with eigenvalue near zero.
-# We skip it and use the next two eigenvectors.
+# The first eigenvector is the trivial solution.
+# Use the next two eigenvectors.
 
 Y_embedding <- sorted_vectors[, 2:3]
 
