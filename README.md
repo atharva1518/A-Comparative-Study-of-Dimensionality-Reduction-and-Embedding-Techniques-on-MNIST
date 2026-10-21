@@ -1,356 +1,309 @@
-# A Comparative Study of Dimensionality Reduction and Embedding Techniques on MNIST
+A Comparative Study of Dimensionality Reduction and Embedding Techniques on MNIST
+Project Overview
+This project studies dimensionality reduction on the MNIST
+handwritten-digit dataset, with Locally Linear Embedding (LLE) as
+the primary nonlinear technique. It implements the core LLE mathematics
+directly in R and compares classification performance against a
+raw-pixel baseline and PCA.
 
-## Locally Linear Embedding (LLE) Implementation in R
+Each MNIST image is a grayscale image of size 28 × 28 pixels,
+represented as 784 features. The pipeline uses a stratified subset
+for LLE training, a separate validation subset for model selection, and
+the official MNIST test set for final evaluation.
+Implementation note: This README reflects the implementation
+described in the supplied file-by-file study notes. It does not assume
+that planned outputs or unimplemented features already exist.
 
----
+Objectives
+- Load and preprocess MNIST images and labels.
+- Create stratified training and validation subsets.
+- Normalize pixel values from 0--255 to 0--1.
+- Implement LLE's neighbor search, reconstruction weights, sparse
+  weight matrix, cost matrix, and eigenvector-based embedding in R.
+- Project unseen images into a learned LLE representation.
+- Compare a raw-pixel 5-nearest-neighbor (5-NN) baseline with
+  classifiers trained on LLE and PCA representations.
+- Tune LLE neighbor count, embedding dimensions, and classifier family
+  using validation data.
+- Evaluate selected models on the official test set.
+- Generate visualizations, metrics, a confusion matrix, and a Markdown
+  summary report.
+Dataset
+MNIST contains 70,000 grayscale handwritten-digit images across ten
+classes (digits 0--9):
+  Split                             Number of images Role
+  Official training set                       60,000 Source for stratified
+                                                     LLE-training and
+                                                     validation subsets
 
-## 📌 Project Overview
+  LLE training subset                          4,000 Fit the LLE embedding
+                                                     and train models
 
-The MNIST dataset contains 28 × 28 grayscale images of handwritten digits. Each image can be represented using **784 pixel features**, resulting in a high-dimensional dataset that can be difficult to visualize and analyse directly.
+  Validation subset                            1,000 Select
+                                                     hyperparameters and
+                                                     classifier
 
-This project investigates **dimensionality reduction and manifold learning** on the MNIST handwritten digit dataset, with **Locally Linear Embedding (LLE)** as the primary technique.
+  Official test set                           10,000 Final held-out
+                                                 evaluation
+Each image has 28 × 28 = 784 pixel features. The code normalizes
+pixel intensities by dividing by 255. The 4,000-image training subset
+and 1,000-image validation subset are selected stratified by digit
+label, with 400 training examples and 100 validation examples per class.
+A fixed random seed (42) supports reproducibility.
 
-The project implements the major stages of LLE in **R**, following a modular programming approach rather than treating the algorithm as a black-box operation.
-
-The main goal is to transform the high-dimensional MNIST representation into a lower-dimensional space while preserving the **local geometric relationships** between data points.
-
-The project will ultimately produce a **2-dimensional embedding** of MNIST that can be visualized and evaluated.
-
----
-
-# 🎯 Project Objectives
-
-The main objectives of this project are:
-
-- Load and explore the MNIST handwritten digit dataset using R.
-- Convert 28 × 28 images into 784-dimensional feature vectors.
-- Normalize pixel values.
-- Create a computationally manageable subset of the dataset.
-- Identify nearest neighbours for each data point.
-- Calculate local reconstruction weights.
-- Implement the Locally Linear Embedding algorithm.
-- Reduce the 784-dimensional representation to 2 dimensions.
-- Visualize the resulting embedding.
-- Evaluate preservation of local structure.
-- Study the effect of parameters such as the number of neighbours.
-- Analyse computational time and scalability.
-- Document the complete implementation and experimental results.
-
----
-
-# 🧠 What is Locally Linear Embedding?
-
-**Locally Linear Embedding (LLE)** is a nonlinear dimensionality-reduction technique based on manifold learning.
-
-The central idea behind LLE is that although a dataset may exist in a high-dimensional space, small neighbourhoods around individual data points can often be approximated using local linear relationships.
-
-For every data point, LLE performs three major steps:
-
-### 1. Find Nearest Neighbours
-
-For every image, the algorithm identifies its K nearest neighbours.
-
-In the current implementation:
-
-
-K = 10
-
-Conceptually:
-
-              Image i
-                 │
-       ┌─────────┼─────────┐
-       ↓         ↓         ↓
-   Neighbour  Neighbour  ... Neighbour
-       1          2          10
-2. Calculate Reconstruction Weights
-
-The original image is reconstructed using a weighted combination of its neighbours.
-
-Conceptually:
-
-Image i ≈ w1 × Neighbour 1
-        + w2 × Neighbour 2
-        + ...
-        + wK × Neighbour K
-
-The weights describe the local geometric structure surrounding the data point.
-
-The weights satisfy:
-
-w1 + w2 + ... + wK = 1
-3. Construct the Low-Dimensional Embedding
-
-After calculating the reconstruction weights, LLE finds a lower-dimensional representation that preserves these local relationships.
-
-For this project:
-
-784-dimensional representation
-              ↓
-             LLE
-              ↓
-2-dimensional representation
-📊 Dataset
-MNIST Handwritten Digits
-
-MNIST is a standard dataset used for machine learning, computer vision and pattern recognition.
-
-Each image is a grayscale handwritten digit ranging from 0 to 9.
-
-Property	Value
-Total images	70,000
-Training images	60,000
-Test images	10,000
-Image dimensions	28 × 28
-Features per image	784
-Number of classes	10
-Classes	0–9
-Pixel range	0–255
-
-The dataset is loaded using the keras3 package in R.
-
-Dataset Source
-
-The MNIST dataset is accessed through the TensorFlow/Keras dataset interface.
-
-🔄 Data Processing
-
-The original MNIST training data has the structure:
-
-60,000 × 28 × 28
-
-Each image contains:
-
-28 × 28 = 784 pixels
-
-Therefore, each image is converted into a 784-dimensional feature vector.
-
-The resulting feature matrix is:
-
-60,000 × 784
-
-Pixel values are normalized from approximately:
-
-0 – 255
-
-to:
-
-0 – 1
-
-For the initial LLE implementation, a controlled subset of 5,000 images is used.
-
-This allows the algorithm to be developed and tested while keeping computational requirements manageable.
-
-🏗️ Overall Project Pipeline
-
-The complete planned pipeline is:
-
-                    MNIST Dataset
-                         │
-                         ▼
-                   Data Loading
-                         │
-                         ▼
-                   Preprocessing
-                         │
-                  28 × 28 → 784
-                         │
-                         ▼
-                    Normalize
-                         │
-                         ▼
-                 Select 5,000
-                    samples
-                         │
-                         ▼
-              Nearest Neighbours
-                    K = 10
-                         │
-                         ▼
-            Local Reconstruction Weights
-                         │
-                         ▼
-                   LLE Embedding
-                         │
-                         ▼
-                 2D Representation
-                         │
-                         ▼
-                  Visualization
-                         │
-                         ▼
-                    Evaluation
-                         │
-                         ▼
-               Experimental Analysis
-📁 Repository Structure
+The implementation described in the study notes loads MNIST with
+dslabs::read_mnist(). If the dataset download fails because the
+configured HarvardX endpoint has an expired TLS certificate, see
+Dataset download troubleshooting.
+Repository Structure
+The implementation described in the study notes uses the following
+files:
 A-Comparative-Study-of-Dimensionality-Reduction-and-Embedding-Techniques-on-MNIST/
-│
-├── README.md
-├── MNIST-LLE.Rproj
-│
-├── R/
-│   ├── 01_load_data.R
-│   ├── 02_preprocessing.R
-│   ├── 03_neighbours.R
-│   ├── 04_weights.R
-│   ├── 05_lle.R
-│   ├── 06_visualization.R
-│   └── 07_evaluation.R
-│
-├── data/
-│
-├── results/
-│   ├── plots/
-│   └── embeddings/
-│
-└── documentation/
-🧩 Implementation Modules
-01 — Data Loading
-R/01_load_data.R
+├── main.R
+├── 01_load_and_preprocess.R
+├── 02_baseline_model.R
+├── 03_lle_core.R
+├── 04_lle_visualization.R
+├── 05_hyperparameter_tuning.R
+├── 06_final_evaluation.R
+├── test_lle.R
+├── mnist_sample_digits.png       # generated output
+├── pca_vs_lle_2d.png             # generated output
+├── confusion_matrix.png          # generated output
+└── project_summary.md            # generated report (configured path-dependent)
+The actual files should be checked against your local repository. The
+study notes describe these scripts at the project root; they do not
+describe the alternative R/ subfolder structure shown in earlier
+planning material.
+Pipeline and Modules
+main.R --- Orchestration
+Coordinates the pipeline by sourcing the modules and calling their
+functions in sequence. It sets the random seed, loads and preprocesses
+data, runs the baseline, generates PCA-versus-LLE plots, tunes
+configurations, and runs final evaluation.
+01_load_and_preprocess.R --- Data loading and preparation
+- Loads MNIST through dslabs::read_mnist().
+- Separates image features and digit labels.
+- Checks for missing pixel values.
+- Builds stratified subsets of 4,000 training images and 1,000
+  validation images.
+- Checks that training and validation indices do not overlap.
+- Normalizes pixel features to the 0--1 range.
+- Produces a plot of 25 sample handwritten digits.
+Key returned objects include X_tr_lle, y_tr_lle, X_val, y_val,
+X_test, y_test, and the full training features and labels.
+02_baseline_model.R --- Raw-pixel baseline
+Runs a 5-NN classifier using the original 784-dimensional pixel
+features. It reports accuracy, macro precision, macro recall, macro F1,
+predictions, and runtime. The KNN classifier is provided by R's class
+package; it is not manually implemented.
+03_lle_core.R --- Manual LLE implementation
+This is the core algorithm module. compute_lle() learns an embedding
+from training data; project_lle() maps new observations into the
+learned embedding.
 
-This module is responsible for:
+The LLE fitting sequence is:
+1. Find neighbors: RANN::nn2() identifies the nearest neighbors.
+   During training, the code requests k + 1 neighbors and removes the
+   first result, assuming it is the point itself.
+2. Build local differences: for each image, calculate differences
+   between the image and its neighbors.
+3. Compute local covariance: form the local matrix (C = Z^T Z).
+4. Regularize: add a small diagonal term controlled by reg to
+   improve numerical stability.
+5. Calculate reconstruction weights: solve the local linear system
+   and normalize the weights so they sum to one.
+6. Build sparse weight matrix: assemble the local weights into
+   sparse matrix (W).
+7. Build the cost matrix: calculate (M = (I-W)^T(I-W)).
+8. Solve the eigenvalue problem: use RSpectra::eigs_sym() with
+   fallback solver configurations to find the smallest relevant
+   eigenvalues and eigenvectors.
+9. Create the embedding: discard the trivial constant-vector
+   solution and retain the requested nontrivial eigenvectors.
+The main function's documented defaults are k = 15, d = 30, and
+reg = 1e-3; calls can override them. The training subset contains
+4,000 images with 784 input features. The tuning pipeline fits up to 50
+embedding dimensions.
 
-Loading the MNIST dataset.
-Separating training and testing data.
-Inspecting dataset dimensions.
-Examining the structure of the dataset.
-Displaying sample handwritten digits.
-Checking corresponding digit labels.
+Out-of-sample projection: project_lle() finds training neighbors
+for each new image, computes local reconstruction weights, and uses the
+weighted sum of those neighbors' learned coordinates to place the new
+image in the existing embedding.
+04_lle_visualization.R --- PCA and LLE visualization
+Creates two-dimensional PCA and LLE plots using the training subset and
+colors points by digit label. The plots are combined and saved as
+pca_vs_lle_2d.png.
 
-The training data has the structure:
+The study notes identify a visualization issue: the Set1 color palette
+supports at most nine distinct colors, while MNIST has ten digit
+classes. This can cause a warning and dropped points. Fix the palette
+(for example, use a palette supporting ten classes) and regenerate the
+plot before relying on it.
+05_hyperparameter_tuning.R --- Validation experiments
+Evaluates 48 configurations using validation data:
+- LLE neighbors: 10, 15, 20, 30
+- Embedding dimensions: 10, 20, 30, 50
+- Classifiers: 5-NN, RBF SVM, Random Forest
+For each neighbor count, the code fits a maximum 50-dimensional LLE
+embedding and reuses its leading coordinates for smaller dimensions. The
+classifier settings are fixed in this experiment: 5-NN uses k = 5; RBF
+SVM uses cost = 10 and gamma = 0.05; Random Forest uses
+ntree = 100. The search does not comprehensively tune all
+classifier-specific parameters.
 
-x_train → 60,000 × 28 × 28
-y_train → 60,000 labels
-02 — Preprocessing
-R/02_preprocessing.R
+Configurations are ranked by validation accuracy, with F1-score used as
+a tie-breaker. The study notes record a best validation configuration of
+15 LLE neighbors, 50 dimensions, RBF SVM, with 94.30% validation
+accuracy for the reported run. This is a recorded result, not a
+guarantee that every run will reproduce it.
+06_final_evaluation.R --- Held-out test evaluation
+Refits LLE with the selected configuration on the 4,000-image training
+subset, projects the 10,000 official test images into the learned space,
+trains the selected classifier, and calculates test metrics. It also
+fits PCA on the training features, transforms the test features using
+the training PCA mean and rotation, and compares PCA-based
+classification with LLE and the raw-pixel baseline.
 
-This module prepares the MNIST data for the LLE algorithm.
+The module generates a confusion-matrix heatmap (confusion_matrix.png)
+and reports frequently confused digit pairs.
+test_lle.R --- Diagnostic checks
+A separate diagnostic script, not part of the normal main.R sequence.
+The study notes describe checks for:
+- Embedding dimensions
+- Reconstruction-weight row sums
+- Sparsity pattern of (W)
+- Symmetry of the cost matrix (M)
+- Non-negligible embedding-coordinate variance
+- Out-of-sample projection dimensions and finite values
+- Label length and missing values
+The checks are defined in the script, but the actual diagnostic output
+should be reviewed before claiming all checks passed.
+Installation and Setup
+Use a recent R installation and open the project in RStudio. Install the
+packages used by the scripts:
+install.packages(c(
+  "dslabs",
+  "ggplot2",
+  "gridExtra",
+  "RANN",
+  "Matrix",
+  "RSpectra",
+  "class",
+  "e1071",
+  "randomForest"
+))
+The modules use namespaced calls for many dependencies (for example,
+RANN::nn2(), RSpectra::eigs_sym(), e1071::svm(), and
+randomForest::randomForest()). Install any additional package required
+by your local script if it is not listed above.
 
-The main operations are:
+Set the working directory to the folder containing main.R and the
+module scripts. The study notes include an example path (d:/MN LLE)
+that is specific to one machine; replace it with your own project
+location or open the .Rproj file in RStudio. Relative paths only work
+when the working directory is correct.
+Running the Project
+Run the pipeline from the project root:
+source("main.R")
+To run diagnostic checks separately:
+source("test_lle.R")
+The diagnostic script may perform a separate, smaller run. Running
+main.R can be computationally expensive because LLE includes
+nearest-neighbor searches and an eigenvalue problem.
+Reported Results
+The supplied study notes record the following results for one run:
 
-Image Flattening
+  Model                       Test accuracy   Macro F1
+  Raw-pixel 5-NN baseline            92.86%     0.9282
+  LLE + RBF SVM                      92.93%     0.9291
+  PCA + RBF SVM                      94.79%     0.9481
 
-Each 28 × 28 image is converted into a 784-dimensional vector.
+The recorded best LLE configuration had 15 neighbors and 50 embedding
+dimensions, with an RBF SVM classifier. The reported validation accuracy
+for that configuration was 94.30%.
 
-28 × 28 image
-      ↓
-784 pixel features
+Interpretation: In the recorded experiment, PCA achieved the highest
+test accuracy, LLE was slightly above the raw-pixel 5-NN baseline, and
+the results do not show that one dimensionality-reduction technique is
+universally superior. These are results documented in the study notes;
+rerun the project to verify them in your environment.
 
-For the selected subset:
+Runtime comparisons should be interpreted cautiously because the timing
+boundaries differ between the baseline, LLE, and PCA pipelines.
+Generated Outputs
+The implementation described in the study notes explicitly produces:
+  Output                              Description
+  mnist_sample_digits.png           Grid of 25 sample training images
 
-5,000 × 784
-Normalization
+  pca_vs_lle_2d.png                 Side-by-side PCA and LLE 2D plots
 
-Pixel values are divided by 255:
+  confusion_matrix.png              Heatmap of test-set classification
+                                      errors
 
-normalized_pixel = pixel / 255
+  project_summary.md                Markdown report containing selected
+                                      settings and metrics, subject to
+                                  its configured output path
+The code described in the notes does not explicitly export embedding
+coordinates or the complete hyperparameter-tuning table as CSV files.
+Those exports would need to be added if required.
+Dataset Download Troubleshooting
+The supplied implementation calls dslabs::read_mnist(). In the
+environment described during setup, this attempted to download from:
+https://www2.harvardx.harvard.edu/courses/IDS_08_v2_03/train-images-idx3-ubyte.gz
+PowerShell's curl.exe -Iv reported SEC_E_CERT_EXPIRED, meaning the
+TLS certificate presented by that endpoint was expired at the time of
+testing. This is not a missing-R-package error. Do not disable
+certificate verification to work around it.
 
-This converts the pixel values to approximately:
-
-0 – 1
-03 — Nearest Neighbours
-R/03_neighbours.R
-
-LLE depends on the local neighbourhood surrounding each data point.
-
-For every MNIST image, the algorithm identifies its K nearest neighbours.
-
-Current configuration:
-
-Number of samples = 5,000
-K = 10
-
-The resulting neighbour matrix has dimensions:
-
-5,000 × 10
-
-Each row represents one image and contains the indices of its 10 nearest neighbours.
-
-The RANN package is used for efficient nearest-neighbour search.
-
-04 — Reconstruction Weights
-R/04_weights.R
-
-This module calculates the local reconstruction weights required by LLE.
-
-For a particular image:
-
-Xi
-
-and its K neighbours:
-
-X1, X2, ..., XK
-
-LLE attempts to reconstruct the original point using a weighted combination of its neighbours:
-
-Xi ≈ w1X1 + w2X2 + ... + wKXK
-
-The reconstruction weights describe the local geometric relationship between the point and its neighbours.
-
-The weights are constrained so that:
-
-w1 + w2 + ... + wK = 1
-
-These weights are calculated independently for each data point.
-
-05 — LLE Embedding
-R/05_lle.R
-
-After calculating the reconstruction weights, this module constructs the final LLE embedding.
-
-The goal is to find low-dimensional coordinates that preserve the local reconstruction relationships calculated in the previous stage.
-
-The intended transformation is:
-
-5,000 × 784
-      ↓
-     LLE
-      ↓
-5,000 × 2
-
-The resulting two-dimensional coordinates will be used for visualization.
-
-06 — Visualization
-R/06_visualization.R
-
-This module will generate visualizations of the LLE embedding.
-
-Planned visualizations include:
-
-2D LLE scatter plot.
-Digit-labelled embedding.
-Distribution of different digit classes.
-Cluster structure.
-Comparison of different values of K.
-Comparison of different dataset sizes.
-
-The labels will be used for visualization and evaluation, not for calculating the LLE neighbourhood relationships.
-
-07 — Evaluation
-R/07_evaluation.R
-
-This module will evaluate the quality of the resulting embedding.
-
-The evaluation will focus on:
-
-Neighbour Preservation
-
-How well local neighbourhoods in the original 784-dimensional space are preserved in the lower-dimensional space.
-
-Local Structure Preservation
-
-Whether nearby points remain relatively close after dimensionality reduction.
-
-Digit Cluster Separation
-
-Whether different handwritten digit classes form distinguishable groups in the 2D embedding.
-
-Computational Performance
-
-The project will also investigate:
-
-Execution time.
-Memory requirements.
-Effect of dataset size.
-Effect of the number of neighbours.
+If the download still fails:
+1. Check that the computer's date, time, and time zone are correct.
+2. Test the endpoint from a browser or PowerShell to confirm whether
+   the certificate issue persists.
+3. Use a trusted MNIST mirror if the original endpoint remains
+   unavailable.
+4. Update the actual data-loading code or configure it to read
+   downloaded files locally. Downloading files separately will not help
+   if the script continues to call the old endpoint.
+5. Verify that all four MNIST gzip files are present and valid before
+   running preprocessing.
+A mirror URL should be tested in your environment before treating it as
+a working replacement. Keep the original data-loading logic and file
+format consistent when changing the source.
+Implementation Limitations and Checks
+- Visualization palette: Set1 has too few colors for ten digit
+  classes in the current plot code; fix and regenerate the plot.
+- Neighbor self-match assumption: training neighbor search removes
+  the first returned neighbor, assuming it is the query point itself.
+  Check duplicate points and tied distances if needed.
+- Runtime fairness: timings use different boundaries and are not a
+  controlled benchmark.
+- CSV exports: embeddings and the complete tuning table are not
+  explicitly exported by the code described in the notes.
+- Hardcoded report path: the report writer uses
+  d:/MN LLE/project_summary.md; update this to a portable
+  project-relative path such as
+  file.path("results", "project_summary.md") and ensure the
+  directory exists.
+- Diagnostics: confirm actual test_lle.R output before reporting
+  that all checks passed.
+- Reproducibility: the seed is fixed at 42, but package versions,
+  numerical libraries, and platform differences can still affect
+  runtime and numerical results.
+Main Contribution
+The main contribution is a modular, manual implementation of the LLE
+pipeline in R rather than relying on a single black-box LLE function.
+The project computes local neighborhoods and reconstruction weights,
+constructs sparse (W) and the cost matrix (M = (I-W)^T(I-W)), obtains
+the embedding from eigenvectors, and implements a procedure for
+projecting unseen images. It then compares LLE with PCA and an
+original-pixel baseline, selects configurations on validation data, and
+evaluates the selected models on the held-out test set.
+References
+- MNIST database: http://yann.lecun.com/exdb/mnist/
+- dslabs R package: https://cran.r-project.org/package=dslabs
+- RANN R package: https://cran.r-project.org/package=RANN
+- RSpectra R package: https://cran.r-project.org/package=RSpectra
+- e1071 R package: https://cran.r-project.org/package=e1071
+- randomForest R package:
+  https://cran.r-project.org/package=randomForest
